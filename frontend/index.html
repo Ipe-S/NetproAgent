@@ -33,13 +33,13 @@
         ondrop="handleDrop(event)"
       >
         <span class="drop-icon">&#8679;</span>
-        <p>Arrastra PDF o Markdown aquí</p>
+        <p>Arrastra PDF, Markdown o imagen aquí</p>
         <p class="drop-sub">o</p>
         <label class="btn btn-primary" for="file-input">Seleccionar archivo</label>
         <input
           id="file-input"
           type="file"
-          accept=".pdf,.md"
+          accept=".pdf,.md,.jpg,.jpeg,.png"
           multiple
           style="display:none"
           onchange="handleFileSelect(event)"
@@ -61,7 +61,7 @@
       <div id="messages" class="messages">
         <div class="message assistant">
           <div class="message-bubble">
-            ¡Hola! Sube documentos PDF o Markdown en el panel izquierdo y luego hazme preguntas sobre su contenido.
+            ¡Hola! Sube documentos PDF, Markdown o imágenes (JPG, PNG) en el panel izquierdo y luego hazme preguntas sobre su contenido.
           </div>
         </div>
       </div>

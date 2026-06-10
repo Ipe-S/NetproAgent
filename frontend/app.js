@@ -43,7 +43,8 @@ function renderDocuments(docs, stats) {
   }
 
   list.innerHTML = docs.map(doc => {
-    const icon = doc.filename.endsWith(".pdf") ? "📄" : "📝";
+    const lower = doc.filename.toLowerCase();
+    const icon = lower.endsWith(".pdf") ? "📄" : (lower.endsWith(".jpg") || lower.endsWith(".jpeg") || lower.endsWith(".png")) ? "🖼️" : "📝";
     const safeFilename = escapeHtml(doc.filename);
     return `
       <div class="doc-item" data-filename="${safeFilename}">
@@ -95,9 +96,10 @@ function handleFileSelect(e) {
 }
 
 async function uploadFiles(files) {
-  const allowed = files.filter(f => f.name.endsWith(".pdf") || f.name.endsWith(".md"));
+  const EXTS = [".pdf", ".md", ".jpg", ".jpeg", ".png"];
+  const allowed = files.filter(f => EXTS.some(ext => f.name.toLowerCase().endsWith(ext)));
   if (!allowed.length) {
-    showToast("Solo se aceptan archivos PDF o Markdown", "error");
+    showToast("Solo se aceptan PDF, Markdown o imágenes (JPG, PNG)", "error");
     return;
   }
 

@@ -10,14 +10,14 @@ from vector_store import vector_store
 
 router = APIRouter(prefix="/api/documents", tags=["documents"])
 
-ALLOWED_EXTENSIONS = {".pdf", ".md"}
+ALLOWED_EXTENSIONS = {".pdf", ".md", ".jpg", ".jpeg", ".png"}
 
 
 @router.post("/upload")
 async def upload_document(file: UploadFile = File(...)):
     ext = Path(file.filename).suffix.lower()
     if ext not in ALLOWED_EXTENSIONS:
-        raise HTTPException(400, "Solo se aceptan archivos PDF o Markdown (.md)")
+        raise HTTPException(400, "Solo se aceptan archivos PDF, Markdown (.md) o imágenes (.jpg, .jpeg, .png)")
 
     with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as tmp:
         tmp.write(await file.read())

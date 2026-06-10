@@ -1,7 +1,11 @@
+import base64
 import fitz  # PyMuPDF
+import httpx
 import re
 from pathlib import Path
 from typing import List, Dict, Any
+
+from config import OLLAMA_BASE_URL, OLLAMA_VISION_MODEL
 
 
 def extract_text_from_pdf(file_path: str) -> str:
@@ -14,6 +18,23 @@ def extract_text_from_pdf(file_path: str) -> str:
 def extract_text_from_md(file_path: str) -> str:
     with open(file_path, "r", encoding="utf-8") as f:
         return f.read()
+
+
+def extract_text_from_image(file_path: str) -> str:
+    with open(file_path, "rb") as f:
+        image_b64 = base64.b64encode(f.read()).decode("utf-8")
+    response = httpx.post(
+        f"{OLLAMA_BASE_URL}/api/generate",
+        json={
+            "model": OLLAMA_VISION_MODEL,
+            "prompt": "Transcribe todo el texto visible en esta imagen. Devuelve únicamente el texto, sin descripciones ni comentarios.",
+            "images": [image_b64],
+            "stream": False,
+        },
+        timeout=120.0,
+    )
+    response.raise_for_status()
+    return response.json().get("response", "")
 
 
 def chunk_text(text: str, chunk_size: int = 500, overlap: int = 50) -> List[str]:
@@ -54,6 +75,8 @@ def process_document(
         text = extract_text_from_pdf(file_path)
     elif ext == ".md":
         text = extract_text_from_md(file_path)
+    elif ext in {".jpg", ".jpeg", ".png"}:
+        text = extract_text_from_image(file_path)
     else:
         raise ValueError(f"Tipo de archivo no soportado: {ext}")
 

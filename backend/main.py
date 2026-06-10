@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from routers import chat, documents
+from routers import chat, clinical, documents
 
 app = FastAPI(title="RAG Chat App", version="1.0.0")
 
@@ -18,6 +18,7 @@ app.add_middleware(
 
 app.include_router(documents.router)
 app.include_router(chat.router)
+app.include_router(clinical.router)
 
 _frontend = os.path.join(os.path.dirname(__file__), "..", "frontend")
 if os.path.isdir(_frontend):

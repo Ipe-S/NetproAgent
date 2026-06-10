@@ -13,75 +13,163 @@
       <h1>RAG Chat</h1>
     </div>
     <div class="header-right">
+      <div class="tab-switcher">
+        <button class="tab-btn active" id="tab-chat" onclick="switchMode('chat')">💬 Chat RAG</button>
+        <button class="tab-btn" id="tab-clinical" onclick="switchMode('clinical')">🧠 Panel Clínico</button>
+      </div>
       <div id="status-badge" class="badge badge-loading">Conectando...</div>
     </div>
   </header>
 
   <main>
-    <!-- LEFT PANEL: Documents -->
-    <aside id="sidebar">
-      <div class="sidebar-header">
-        <h2>Base de Conocimiento</h2>
-        <div id="kb-stats" class="kb-stats">0 docs &bull; 0 fragmentos</div>
-      </div>
+    <!-- ── MODO CHAT (default) ── -->
+    <div id="chat-mode" class="mode-wrapper">
+      <aside id="sidebar">
+        <div class="sidebar-header">
+          <h2>Base de Conocimiento</h2>
+          <div id="kb-stats" class="kb-stats">0 docs &bull; 0 fragmentos</div>
+        </div>
 
-      <div
-        id="drop-zone"
-        class="drop-zone"
-        ondragover="handleDragOver(event)"
-        ondragleave="handleDragLeave(event)"
-        ondrop="handleDrop(event)"
-      >
-        <span class="drop-icon">&#8679;</span>
-        <p>Arrastra PDF, Markdown o imagen aquí</p>
-        <p class="drop-sub">o</p>
-        <label class="btn btn-primary" for="file-input">Seleccionar archivo</label>
-        <input
-          id="file-input"
-          type="file"
-          accept=".pdf,.md,.jpg,.jpeg,.png"
-          multiple
-          style="display:none"
-          onchange="handleFileSelect(event)"
-        />
-      </div>
+        <div
+          id="drop-zone"
+          class="drop-zone"
+          ondragover="handleDragOver(event)"
+          ondragleave="handleDragLeave(event)"
+          ondrop="handleDrop(event)"
+        >
+          <span class="drop-icon">&#8679;</span>
+          <p>Arrastra PDF, Markdown o imagen aquí</p>
+          <p class="drop-sub">o</p>
+          <label class="btn btn-primary" for="file-input">Seleccionar archivo</label>
+          <input
+            id="file-input"
+            type="file"
+            accept=".pdf,.md,.jpg,.jpeg,.png"
+            multiple
+            style="display:none"
+            onchange="handleFileSelect(event)"
+          />
+        </div>
 
-      <div id="upload-progress" class="upload-progress hidden">
-        <div class="progress-bar"><div id="progress-fill" class="progress-fill"></div></div>
-        <span id="progress-label">Procesando...</span>
-      </div>
+        <div id="upload-progress" class="upload-progress hidden">
+          <div class="progress-bar"><div id="progress-fill" class="progress-fill"></div></div>
+          <span id="progress-label">Procesando...</span>
+        </div>
 
-      <div id="doc-list" class="doc-list">
-        <p class="empty-hint">No hay documentos cargados.</p>
-      </div>
-    </aside>
+        <div id="doc-list" class="doc-list">
+          <p class="empty-hint">No hay documentos cargados.</p>
+        </div>
+      </aside>
 
-    <!-- RIGHT PANEL: Chat -->
-    <section id="chat-panel">
-      <div id="messages" class="messages">
-        <div class="message assistant">
-          <div class="message-bubble">
-            ¡Hola! Sube documentos PDF, Markdown o imágenes (JPG, PNG) en el panel izquierdo y luego hazme preguntas sobre su contenido.
+      <section id="chat-panel">
+        <div id="messages" class="messages">
+          <div class="message assistant">
+            <div class="message-bubble">
+              ¡Hola! Sube documentos PDF, Markdown o imágenes (JPG, PNG) en el panel izquierdo y luego hazme preguntas sobre su contenido.
+            </div>
           </div>
+        </div>
+
+        <form id="chat-form" class="chat-form" onsubmit="sendMessage(event)">
+          <textarea
+            id="chat-input"
+            placeholder="Escribe tu pregunta aquí..."
+            rows="1"
+            onkeydown="handleKey(event)"
+            oninput="autoResize(this)"
+          ></textarea>
+          <button id="send-btn" type="submit" class="btn btn-send" title="Enviar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="22" y1="2" x2="11" y2="13"/>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+            </svg>
+          </button>
+        </form>
+      </section>
+    </div>
+
+    <!-- ── MODO PANEL CLÍNICO ── -->
+    <div id="clinical-mode" class="mode-wrapper hidden">
+
+      <!-- Columna izquierda: inputs -->
+      <div class="cl-inputs-col">
+
+        <!-- Terapia Ocupacional -->
+        <div class="cl-card cl-card-to">
+          <div class="cl-card-header">
+            <span class="cl-icon">🧩</span>
+            <div class="cl-card-info">
+              <div class="cl-card-name">Terapia Ocupacional</div>
+              <div class="cl-card-sub">Sensorial · AVD · Entorno</div>
+            </div>
+            <span class="cl-status pending" id="badge-to">Pendiente</span>
+          </div>
+          <textarea id="input-to" class="cl-textarea"
+            placeholder="Procesamiento sensorial, autonomía en AVD, perfil de regulación psicomotriz, barreras del entorno (colegio, hogar, trabajo)..."></textarea>
+          <div class="cl-card-footer">
+            <button class="btn btn-sm btn-to" onclick="saveClinicalInput('to')">Guardar</button>
+            <span class="cl-saved-hint hidden" id="hint-to">✓ Guardado</span>
+          </div>
+        </div>
+
+        <!-- Psicología -->
+        <div class="cl-card cl-card-psi">
+          <div class="cl-card-header">
+            <span class="cl-icon">🧠</span>
+            <div class="cl-card-info">
+              <div class="cl-card-name">Psicología CC / Neurodesarrollo</div>
+              <div class="cl-card-sub">Emocional · Conductual · Social</div>
+            </div>
+            <span class="cl-status pending" id="badge-psicologia">Pendiente</span>
+          </div>
+          <textarea id="input-psicologia" class="cl-textarea"
+            placeholder="Perfil emocional, conductas observadas, ansiedad, habilidades sociales, dinámicas familiares, identidad neurodivergente..."></textarea>
+          <div class="cl-card-footer">
+            <button class="btn btn-sm btn-psi" onclick="saveClinicalInput('psicologia')">Guardar</button>
+            <span class="cl-saved-hint hidden" id="hint-psicologia">✓ Guardado</span>
+          </div>
+        </div>
+
+        <!-- Neurología -->
+        <div class="cl-card cl-card-neu">
+          <div class="cl-card-header">
+            <span class="cl-icon">🔬</span>
+            <div class="cl-card-info">
+              <div class="cl-card-name">Neurología — Neurodesarrollo</div>
+              <div class="cl-card-sub">FE · Comorbilidades · Diagnóstico</div>
+            </div>
+            <span class="cl-status pending" id="badge-neurologia">Pendiente</span>
+          </div>
+          <textarea id="input-neurologia" class="cl-textarea"
+            placeholder="Funciones ejecutivas, comorbilidades (sueño, migrañas, etc.), perfil neurocognitivo, validación clínica (TEA/CEA, TDAH, AACC), derivaciones..."></textarea>
+          <div class="cl-card-footer">
+            <button class="btn btn-sm btn-neu" onclick="saveClinicalInput('neurologia')">Guardar</button>
+            <span class="cl-saved-hint hidden" id="hint-neurologia">✓ Guardado</span>
+          </div>
+        </div>
+
+        <!-- Acciones -->
+        <div class="cl-actions">
+          <button id="consolidate-btn" class="btn btn-consolidate" onclick="consolidateReport()" disabled>
+            📋 Consolidar informe interdisciplinar
+          </button>
+          <button class="btn btn-ghost" onclick="clearClinical()">↺ Nuevo caso</button>
+        </div>
+
+      </div>
+
+      <!-- Columna derecha: informe -->
+      <div class="cl-report-col">
+        <div class="cl-report-header">
+          <span>📋 Informe Interdisciplinar</span>
+          <button id="copy-report-btn" class="btn btn-sm btn-ghost hidden" onclick="copyReport()">Copiar</button>
+        </div>
+        <div id="cl-report" class="cl-report">
+          <p class="cl-empty">El informe consolidado aparecerá aquí una vez que los tres especialistas hayan registrado sus observaciones.</p>
         </div>
       </div>
 
-      <form id="chat-form" class="chat-form" onsubmit="sendMessage(event)">
-        <textarea
-          id="chat-input"
-          placeholder="Escribe tu pregunta aquí..."
-          rows="1"
-          onkeydown="handleKey(event)"
-          oninput="autoResize(this)"
-        ></textarea>
-        <button id="send-btn" type="submit" class="btn btn-send" title="Enviar">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="22" y1="2" x2="11" y2="13"/>
-            <polygon points="22 2 15 22 11 13 2 9 22 2"/>
-          </svg>
-        </button>
-      </form>
-    </section>
+    </div>
   </main>
 
   <script src="/static/app.js"></script>

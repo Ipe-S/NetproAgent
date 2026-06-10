@@ -267,6 +267,157 @@ function escapeHtml(str) {
   return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
+// ── Mode switcher ─────────────────────────────────────────────────────────────
+function switchMode(mode) {
+  const chatMode = document.getElementById("chat-mode");
+  const clinicalMode = document.getElementById("clinical-mode");
+  const tabChat = document.getElementById("tab-chat");
+  const tabClinical = document.getElementById("tab-clinical");
+
+  if (mode === "chat") {
+    chatMode.classList.remove("hidden");
+    clinicalMode.classList.add("hidden");
+    tabChat.classList.add("active");
+    tabClinical.classList.remove("active");
+  } else {
+    chatMode.classList.add("hidden");
+    clinicalMode.classList.remove("hidden");
+    tabChat.classList.remove("active");
+    tabClinical.classList.add("active");
+    loadClinicalStatus();
+  }
+}
+
+// ── Clinical Panel ─────────────────────────────────────────────────────────────
+async function saveClinicalInput(specialist) {
+  const text = document.getElementById(`input-${specialist}`).value.trim();
+  if (!text) { showToast("El campo no puede estar vacío", "error"); return; }
+
+  try {
+    const res = await fetch("/api/clinical/input", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ specialist, text }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      updateClinicalStatus(data.status);
+      const hint = document.getElementById(`hint-${specialist}`);
+      hint.classList.remove("hidden");
+      setTimeout(() => hint.classList.add("hidden"), 2000);
+    } else {
+      showToast(data.detail || "Error al guardar", "error");
+    }
+  } catch {
+    showToast("Error de conexión", "error");
+  }
+}
+
+async function loadClinicalStatus() {
+  try {
+    const res = await fetch("/api/clinical/status");
+    const data = await res.json();
+    updateClinicalStatus(data.status);
+  } catch {}
+}
+
+function updateClinicalStatus(status) {
+  let allReady = true;
+  for (const [key, ready] of Object.entries(status)) {
+    const badge = document.getElementById(`badge-${key}`);
+    if (badge) {
+      badge.textContent = ready ? "✓ Listo" : "Pendiente";
+      badge.className = `cl-status ${ready ? "ready" : "pending"}`;
+    }
+    if (!ready) allReady = false;
+  }
+  document.getElementById("consolidate-btn").disabled = !allReady;
+}
+
+let isClinicalStreaming = false;
+
+async function consolidateReport() {
+  if (isClinicalStreaming) return;
+
+  const reportEl = document.getElementById("cl-report");
+  reportEl.innerHTML = '<p class="cl-generating">Generando informe interdisciplinar...</p>';
+  isClinicalStreaming = true;
+  document.getElementById("consolidate-btn").disabled = true;
+  document.getElementById("copy-report-btn").classList.add("hidden");
+
+  try {
+    const res = await fetch("/api/clinical/consolidate", { method: "POST" });
+    if (!res.ok) {
+      const err = await res.json();
+      reportEl.innerHTML = `<p class="cl-empty">⚠️ ${escapeHtml(err.detail)}</p>`;
+      return;
+    }
+
+    let fullText = "";
+    reportEl.innerHTML = '<div id="cl-report-content" class="cl-report-content typing-cursor"></div>';
+    const contentEl = document.getElementById("cl-report-content");
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n\n");
+      buffer = lines.pop();
+
+      for (const line of lines) {
+        if (!line.startsWith("data: ")) continue;
+        const msg = JSON.parse(line.slice(6));
+        if (msg.type === "token") {
+          fullText += msg.content;
+          contentEl.innerHTML = renderClinicalMarkdown(fullText);
+          reportEl.scrollTop = reportEl.scrollHeight;
+        } else if (msg.type === "done") {
+          contentEl.classList.remove("typing-cursor");
+          document.getElementById("copy-report-btn").classList.remove("hidden");
+        }
+      }
+    }
+  } catch {
+    reportEl.innerHTML = '<p class="cl-empty">⚠️ Error de conexión con el servidor.</p>';
+  } finally {
+    isClinicalStreaming = false;
+    document.getElementById("consolidate-btn").disabled = false;
+  }
+}
+
+async function clearClinical() {
+  if (!confirm("¿Iniciar un nuevo caso? Se borrarán todos los datos ingresados.")) return;
+  try { await fetch("/api/clinical/clear", { method: "POST" }); } catch {}
+
+  ["to", "psicologia", "neurologia"].forEach(s => {
+    document.getElementById(`input-${s}`).value = "";
+    document.getElementById(`hint-${s}`).classList.add("hidden");
+  });
+  updateClinicalStatus({ to: false, psicologia: false, neurologia: false });
+
+  document.getElementById("cl-report").innerHTML =
+    '<p class="cl-empty">El informe consolidado aparecerá aquí una vez que los tres especialistas hayan registrado sus observaciones.</p>';
+  document.getElementById("copy-report-btn").classList.add("hidden");
+}
+
+function copyReport() {
+  const el = document.getElementById("cl-report-content");
+  if (!el) return;
+  navigator.clipboard.writeText(el.innerText).then(() => showToast("Informe copiado al portapapeles"));
+}
+
+function renderClinicalMarkdown(text) {
+  return text
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+    .replace(/\n/g, "<br>");
+}
+
 // ── Init ──────────────────────────────────────────────────────────────────────
 checkHealth();
 loadDocuments();

@@ -7,7 +7,8 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
 from clinical_session import clinical_session
-from config import OLLAMA_BASE_URL, OLLAMA_MODEL
+from config import OLLAMA_BASE_URL, OLLAMA_MODEL, TOP_K_RESULTS
+from vector_store import vector_store
 
 router = APIRouter(prefix="/api/clinical", tags=["clinical"])
 
@@ -26,8 +27,17 @@ _SYSTEM = (
 )
 
 
-def _consolidation_prompt(inputs: dict) -> str:
+def _consolidation_prompt(inputs: dict, chunks: list) -> str:
+    doc_context = ""
+    if chunks:
+        fragments = "\n\n".join(
+            f"[Fragmento {i + 1} — {c['metadata']['filename']}]:\n{c['text']}"
+            for i, c in enumerate(chunks)
+        )
+        doc_context = f"## CONTEXTO DE DOCUMENTOS CARGADOS:\n{fragments}\n\n"
+
     return (
+        f"{doc_context}"
         f"## DATOS DEL TERAPEUTA OCUPACIONAL:\n{inputs['to']}\n\n"
         f"## DATOS DEL PSICÓLOGO COGNITIVO-CONDUCTUAL:\n{inputs['psicologia']}\n\n"
         f"## DATOS DEL NEURÓLOGO:\n{inputs['neurologia']}\n\n"
@@ -35,7 +45,7 @@ def _consolidation_prompt(inputs: dict) -> str:
         "📋 REPORTE INTERDISCIPLINAR DE NEURODIVERGENCIA\n\n"
         "**1. SÍNTESIS INTEGRATIVA DEL CASO**\n"
         "(Resumen que cruza hallazgos biológicos, psicológicos y funcionales. "
-        "No repitas datos, conéctalos.)\n\n"
+        "No repitas datos, conéctalos. Apóyate en el contexto documental si es relevante.)\n\n"
         "**2. PERSPECTIVA POR ESPECIALIDAD**\n"
         "- **Análisis Neurológico:** (Juicio clínico, funciones ejecutivas, "
         "bases orgánicas y observaciones médicas)\n"
@@ -83,7 +93,11 @@ async def consolidate():
     if missing:
         raise HTTPException(400, f"Faltan datos de: {', '.join(missing)}")
 
-    prompt = _consolidation_prompt(clinical_session.get_all())
+    inputs = clinical_session.get_all()
+    query = " ".join(inputs.values())
+    chunks = vector_store.search(query, n_results=TOP_K_RESULTS) if vector_store.get_stats()["total_chunks"] > 0 else []
+
+    prompt = _consolidation_prompt(inputs, chunks)
 
     async def event_stream():
         async with httpx.AsyncClient(timeout=180.0) as client:

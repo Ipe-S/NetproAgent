@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RAG Chat</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <header>
+    <div class="header-left">
+      <span class="logo">&#128196;</span>
+      <h1>RAG Chat</h1>
+    </div>
+    <div class="header-right">
+      <div id="status-badge" class="badge badge-loading">Conectando...</div>
+    </div>
+  </header>
+
+  <main>
+    <!-- LEFT PANEL: Documents -->
+    <aside id="sidebar">
+      <div class="sidebar-header">
+        <h2>Base de Conocimiento</h2>
+        <div id="kb-stats" class="kb-stats">0 docs &bull; 0 fragmentos</div>
+      </div>
+
+      <div
+        id="drop-zone"
+        class="drop-zone"
+        ondragover="handleDragOver(event)"
+        ondragleave="handleDragLeave(event)"
+        ondrop="handleDrop(event)"
+      >
+        <span class="drop-icon">&#8679;</span>
+        <p>Arrastra PDF o Markdown aquí</p>
+        <p class="drop-sub">o</p>
+        <label class="btn btn-primary" for="file-input">Seleccionar archivo</label>
+        <input
+          id="file-input"
+          type="file"
+          accept=".pdf,.md"
+          multiple
+          style="display:none"
+          onchange="handleFileSelect(event)"
+        />
+      </div>
+
+      <div id="upload-progress" class="upload-progress hidden">
+        <div class="progress-bar"><div id="progress-fill" class="progress-fill"></div></div>
+        <span id="progress-label">Procesando...</span>
+      </div>
+
+      <div id="doc-list" class="doc-list">
+        <p class="empty-hint">No hay documentos cargados.</p>
+      </div>
+    </aside>
+
+    <!-- RIGHT PANEL: Chat -->
+    <section id="chat-panel">
+      <div id="messages" class="messages">
+        <div class="message assistant">
+          <div class="message-bubble">
+            ¡Hola! Sube documentos PDF o Markdown en el panel izquierdo y luego hazme preguntas sobre su contenido.
+          </div>
+        </div>
+      </div>
+
+      <form id="chat-form" class="chat-form" onsubmit="sendMessage(event)">
+        <textarea
+          id="chat-input"
+          placeholder="Escribe tu pregunta aquí..."
+          rows="1"
+          onkeydown="handleKey(event)"
+          oninput="autoResize(this)"
+        ></textarea>
+        <button id="send-btn" type="submit" class="btn btn-send" title="Enviar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="22" y1="2" x2="11" y2="13"/>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+          </svg>
+        </button>
+      </form>
+    </section>
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
